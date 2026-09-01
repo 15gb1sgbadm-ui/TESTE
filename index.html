@@ -601,10 +601,10 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="cpfInput">CPF (somente números)</label>
-                    <input 
-                        type="text" 
-                        id="cpfInput" 
-                        placeholder="12345678901" 
+                    <input
+                        type="text"
+                        id="cpfInput"
+                        placeholder="12345678901"
                         maxlength="11"
                         inputmode="numeric"
                         required
@@ -722,9 +722,9 @@
 
                 <div class="form-field">
                     <label>Item *</label>
-                    <input 
-                        type="text" 
-                        id="lancItem" 
+                    <input
+                        type="text"
+                        id="lancItem"
                         placeholder="Nome do item"
                         required
                     >
@@ -732,9 +732,9 @@
 
                 <div class="form-field">
                     <label>Quantidade *</label>
-                    <input 
-                        type="number" 
-                        id="lancQuantidade" 
+                    <input
+                        type="number"
+                        id="lancQuantidade"
                         min="1"
                         placeholder="0"
                         required
@@ -752,9 +752,9 @@
 
                 <div class="form-field">
                     <label>Destinação</label>
-                    <input 
-                        type="text" 
-                        id="lancDestinacao" 
+                    <input
+                        type="text"
+                        id="lancDestinacao"
                         placeholder="Ex: Reposição de estoque"
                     >
                 </div>
@@ -775,7 +775,7 @@
         // CONFIGURAÇÃO
         // ============================================================================
         const API_URL = 'https://script.google.com/macros/s/AKfycbwfKIbtqh_67oxuTOZnXx9ymANdGspgRbnN9KJnJO5z0PAGIEG20p8mwGuz0zg1PTJY/exec';
-        
+
         let estadoGlobal = {
             usuarioCPF: null,
             usuarioNome: null,
@@ -792,7 +792,7 @@
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const cpf = document.getElementById('cpfInput').value.replace(/\D/g, '');
             const btnLogin = document.getElementById('btnLogin');
             const loginLoading = document.getElementById('loginLoading');
@@ -816,7 +816,12 @@
                     throw new Error('Erro ao validar usuário');
                 }
 
-                const usuario = data.dados.find(u => u.cpf.replace(/\D/g, '') === cpf);
+                // Normaliza o CPF vindo da planilha: se a coluna não estiver
+                // formatada como "Texto simples", o Google Sheets devolve o
+                // valor como número (perdendo zeros à esquerda), e nesse caso
+                // u.cpf não tem o método .replace(). String(u.cpf) cobre os
+                // dois formatos (texto ou número) antes de comparar.
+                const usuario = data.dados.find(u => String(u.cpf || '').replace(/\D/g, '') === cpf);
 
                 if (!usuario || !usuario.ativo) {
                     mostrarErroLogin('CPF não autorizado ou inativo');
@@ -828,7 +833,7 @@
                 // Login bem-sucedido
                 estadoGlobal.usuarioCPF = cpf;
                 estadoGlobal.usuarioNome = usuario.nome || 'Usuário';
-                
+
                 document.getElementById('userDisplay').textContent = `${estadoGlobal.usuarioNome} (${cpf})`;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboardScreen').classList.add('active');
@@ -859,10 +864,16 @@
                 categorias: [],
                 ultimaAtualizacao: null
             };
-            
+
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('dashboardScreen').classList.remove('active');
             document.getElementById('loginForm').reset();
+            // O envio do login esconde o botão "Entrar" e mostra o spinner;
+            // no caminho de sucesso isso nunca era desfeito, então após um
+            // logout o botão sumia e um segundo login ficava impossível.
+            document.getElementById('btnLogin').style.display = 'block';
+            document.getElementById('loginLoading').style.display = 'none';
+            document.getElementById('loginError').classList.remove('show');
             document.getElementById('cpfInput').focus();
         });
 
@@ -955,7 +966,7 @@
                 opt.value = a;
                 opt.textContent = a;
                 selectAlmox.appendChild(opt);
-                
+
                 const opt2 = document.createElement('option');
                 opt2.value = a;
                 opt2.textContent = a;
@@ -979,7 +990,7 @@
         function atualizarStats() {
             const totalItens = estadoGlobal.estoque.length;
             const totalQtd = estadoGlobal.estoque.reduce((sum, e) => sum + (e.quantidade || 0), 0);
-            const ultima = estadoGlobal.ultimaAtualizacao 
+            const ultima = estadoGlobal.ultimaAtualizacao
                 ? estadoGlobal.ultimaAtualizacao.toLocaleTimeString('pt-BR')
                 : '-';
 

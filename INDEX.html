@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Almoxarifado 1º SGB - Corpo de Bombeiros SP</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        /* ============ LOGIN SCREEN ============ */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 3rem 2rem;
+            width: 100%;
+            max-width: 400px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            font-size: 1.8rem;
+            color: #cc0000;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #cc0000;
+            box-shadow: 0 0 0 3px rgba(204,0,0,0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #999;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 0.9rem;
+            background: linear-gradient(90deg, #cc0000 0%, #990000 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(204,0,0,0.3);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .login-error {
+            display: none;
+            background: #fee;
+            color: #c33;
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #c33;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .login-loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* ============ DASHBOARD SCREEN ============ */
+        .dashboard-container {
+            display: none;
+        }
+
+        .dashboard-container.active {
+            display: block;
+        }
+
+        header {
+            background: linear-gradient(90deg, #cc0000 0%, #990000 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-bottom: 4px solid #ffcc00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 0.3rem;
+        }
+
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        /* ============ TOOLBAR ============ */
+        .toolbar {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: 1fr 1fr auto auto;
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .toolbar-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toolbar-group input,
+        .toolbar-group select {
+            padding: 0.6rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        .toolbar-group input:focus,
+        .toolbar-group select:focus {
+            outline: none;
+            border-color: #cc0000;
+            box-shadow: 0 0 0 3px rgba(204,0,0,0.1);
+        }
+
+        .btn-atualizar {
+            background: linear-gradient(90deg, #0066cc 0%, #003d99 100%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn-atualizar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,102,204,0.3);
+        }
+
+        .btn-atualizar:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-lancar {
+            background: linear-gradient(90deg, #00aa00 0%, #008000 100%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn-lancar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,170,0,0.3);
+        }
+
+        /* ============ STATS ============ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #cc0000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #cc0000;
+        }
+
+        /* ============ TABELA DE ESTOQUE ============ */
+        .estoque-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .estoque-header {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .estoque-header h2 {
+            font-size: 1.3rem;
+            color: #1a1a1a;
+        }
+
+        .estoque-table {
+            width: 100%;
+            border-collapse: collapse;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .estoque-table thead {
+            background: #f0f0f0;
+            position: sticky;
+            top: 0;
+        }
+
+        .estoque-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95rem;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .estoque-table td {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .estoque-table tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .qty-badge {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #cc0000;
+            font-size: 0.9rem;
+        }
+
+        /* ============ MODAL LANÇAMENTO ============ */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: #1a1a1a;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-field label {
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            color: #333;
+            font-size: 0.95rem;
+        }
+
+        .form-field input,
+        .form-field select {
+            padding: 0.7rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus {
+            outline: none;
+            border-color: #cc0000;
+            box-shadow: 0 0 0 3px rgba(204,0,0,0.1);
+        }
+
+        .form-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-cancel {
+            background: #ddd;
+            color: #333;
+            border: none;
+            padding: 0.7rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-cancel:hover {
+            background: #ccc;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(90deg, #00aa00 0%, #008000 100%);
+            color: white;
+            border: none;
+            padding: 0.7rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-confirm:hover {
+            transform: translateY(-2px);
+        }
+
+        /* ============ LOADING & STATUS ============ */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #cc0000;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #333;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 2000;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast.active {
+            display: block;
+        }
+
+        .toast.success {
+            background: #00aa00;
+        }
+
+        .toast.error {
+            background: #cc0000;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* ============ RESPONSIVIDADE ============ */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .estoque-table {
+                font-size: 0.9rem;
+            }
+
+            .estoque-table th,
+            .estoque-table td {
+                padding: 0.6rem 0.5rem;
+            }
+
+            .modal-content {
+                margin: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============ LOGIN SCREEN ============ -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>🚒 Almoxarifado</h1>
+                <p>1º SGB - Corpo de Bombeiros SP</p>
+            </div>
+
+            <div id="loginError" class="login-error"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="cpfInput">CPF (somente números)</label>
+                    <input
+                        type="text"
+                        id="cpfInput"
+                        placeholder="12345678901"
+                        maxlength="11"
+                        inputmode="numeric"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn-login" id="btnLogin">
+                    Entrar
+                </button>
+
+                <div class="login-loading" id="loginLoading">
+                    <div class="spinner"></div>
+                    Autenticando...
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ DASHBOARD SCREEN ============ -->
+    <div id="dashboardScreen" class="dashboard-container">
+        <header>
+            <div>
+                <h1>🚒 Almoxarifado</h1>
+                <p>1º SGB | Corpo de Bombeiros SP</p>
+            </div>
+            <div class="header-user">
+                <span id="userDisplay">Usuário</span>
+                <button class="btn-logout" id="btnLogout">Sair</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- TOOLBAR -->
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <label>Almoxarifado</label>
+                    <select id="filterAlmoxarifado">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="toolbar-group">
+                    <label>Categoria</label>
+                    <select id="filterCategoria">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <button class="btn-atualizar" id="btnAtualizar">🔄 Atualizar</button>
+                <button class="btn-lancar" id="btnNovoLancamento">+ Lançar Item</button>
+            </div>
+
+            <!-- STATS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total de Itens</div>
+                    <div class="stat-value" id="statTotalItens">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total em Estoque</div>
+                    <div class="stat-value" id="statTotalQtd">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Última Atualização</div>
+                    <div style="font-size: 1rem; color: #666;" id="statUltima">-</div>
+                </div>
+            </div>
+
+            <!-- ESTOQUE TABLE -->
+            <div class="estoque-container">
+                <div class="estoque-header">
+                    <h2>Estoque Atual</h2>
+                </div>
+                <div class="loading" id="loadingTable">
+                    <div class="spinner"></div>
+                    Carregando dados...
+                </div>
+                <table class="estoque-table" id="estoqueTable">
+                    <thead>
+                        <tr>
+                            <th>Almoxarifado</th>
+                            <th>Categoria</th>
+                            <th>Item</th>
+                            <th>Tamanho</th>
+                            <th style="text-align: right;">Quantidade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="estoqueBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ MODAL LANÇAMENTO ============ -->
+    <div id="modalLancamento" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Lançar Movimento</h2>
+                <button class="modal-close" id="btnFecharModal">&times;</button>
+            </div>
+
+            <form id="formLancamento" class="modal-form">
+                <div class="form-field">
+                    <label>Almoxarifado *</label>
+                    <select id="lancAlmoxarifado" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label>Categoria *</label>
+                    <select id="lancCategoria" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label>Item *</label>
+                    <input
+                        type="text"
+                        id="lancItem"
+                        placeholder="Nome do item"
+                        required
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label>Quantidade *</label>
+                    <input
+                        type="number"
+                        id="lancQuantidade"
+                        min="1"
+                        placeholder="0"
+                        required
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label>Operação *</label>
+                    <select id="lancOperacao" required>
+                        <option value="">Selecione...</option>
+                        <option value="entrada">Entrada</option>
+                        <option value="saída">Saída</option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label>Destinação</label>
+                    <input
+                        type="text"
+                        id="lancDestinacao"
+                        placeholder="Ex: Reposição de estoque"
+                    >
+                </div>
+
+                <div class="form-buttons">
+                    <button type="button" class="btn-cancel" id="btnCancelar">Cancelar</button>
+                    <button type="submit" class="btn-confirm">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ TOAST ============ -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ============================================================================
+        // CONFIGURAÇÃO
+        // ============================================================================
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwfKIbtqh_67oxuTOZnXx9ymANdGspgRbnN9KJnJO5z0PAGIEG20p8mwGuz0zg1PTJY/exec';
+
+        let estadoGlobal = {
+            usuarioCPF: null,
+            usuarioNome: null,
+            estoque: [],
+            usuarios: [],
+            almoxarifados: [],
+            categorias: [],
+            ultimaAtualizacao: null
+        };
+
+        // ============================================================================
+        // LOGIN
+        // ============================================================================
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const cpf = document.getElementById('cpfInput').value.replace(/\D/g, '');
+            const btnLogin = document.getElementById('btnLogin');
+            const loginLoading = document.getElementById('loginLoading');
+            const loginError = document.getElementById('loginError');
+
+            if (cpf.length !== 11) {
+                mostrarErroLogin('CPF deve ter 11 dígitos');
+                return;
+            }
+
+            btnLogin.style.display = 'none';
+            loginLoading.style.display = 'block';
+            loginError.classList.remove('show');
+
+            try {
+                // Buscar usuários para validar CPF
+                const response = await fetch(`${API_URL}?acao=getUsuarios`);
+                const data = await response.json();
+
+                if (!data.sucesso || !data.dados) {
+                    throw new Error('Erro ao validar usuário');
+                }
+
+                // Normaliza o CPF vindo da planilha: se a coluna não estiver
+                // formatada como "Texto simples", o Google Sheets devolve o
+                // valor como número (perdendo zeros à esquerda), e nesse caso
+                // u.cpf não tem o método .replace(). String(u.cpf) cobre os
+                // dois formatos (texto ou número) antes de comparar.
+                const usuario = data.dados.find(u => String(u.cpf || '').replace(/\D/g, '') === cpf);
+
+                if (!usuario || !usuario.ativo) {
+                    mostrarErroLogin('CPF não autorizado ou inativo');
+                    btnLogin.style.display = 'block';
+                    loginLoading.style.display = 'none';
+                    return;
+                }
+
+                // Login bem-sucedido
+                estadoGlobal.usuarioCPF = cpf;
+                estadoGlobal.usuarioNome = usuario.nome || 'Usuário';
+
+                document.getElementById('userDisplay').textContent = `${estadoGlobal.usuarioNome} (${cpf})`;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboardScreen').classList.add('active');
+
+                // Carregar dados do dashboard
+                await carregarDados();
+
+            } catch (error) {
+                mostrarErroLogin('Erro ao conectar com servidor: ' + error.message);
+                btnLogin.style.display = 'block';
+                loginLoading.style.display = 'none';
+            }
+        });
+
+        function mostrarErroLogin(msg) {
+            const loginError = document.getElementById('loginError');
+            loginError.textContent = msg;
+            loginError.classList.add('show');
+        }
+
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            estadoGlobal = {
+                usuarioCPF: null,
+                usuarioNome: null,
+                estoque: [],
+                usuarios: [],
+                almoxarifados: [],
+                categorias: [],
+                ultimaAtualizacao: null
+            };
+
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('loginForm').reset();
+            // O envio do login esconde o botão "Entrar" e mostra o spinner;
+            // no caminho de sucesso isso nunca era desfeito, então após um
+            // logout o botão sumia e um segundo login ficava impossível.
+            document.getElementById('btnLogin').style.display = 'block';
+            document.getElementById('loginLoading').style.display = 'none';
+            document.getElementById('loginError').classList.remove('show');
+            document.getElementById('cpfInput').focus();
+        });
+
+        // ============================================================================
+        // CARREGAR DADOS
+        // ============================================================================
+
+        async function carregarDados() {
+            mostrarLoading(true);
+
+            try {
+                // Carregar estoque
+                const estoque = await fetch(`${API_URL}?acao=getEstoque`).then(r => r.json());
+                // Carregar categorias
+                const categorias = await fetch(`${API_URL}?acao=getCategorias`).then(r => r.json());
+                // Carregar almoxarifados
+                const almoxarifados = await fetch(`${API_URL}?acao=getAlmoxarifados`).then(r => r.json());
+
+                if (estoque.sucesso && estoque.dados) {
+                    estadoGlobal.estoque = estoque.dados;
+                }
+                if (categorias.sucesso && categorias.dados) {
+                    estadoGlobal.categorias = categorias.dados;
+                }
+                if (almoxarifados.sucesso && almoxarifados.dados) {
+                    estadoGlobal.almoxarifados = almoxarifados.dados;
+                }
+
+                estadoGlobal.ultimaAtualizacao = new Date();
+
+                // Renderizar UI
+                renderizarEstoque();
+                preencherFiltros();
+                atualizarStats();
+
+                mostrarToast('Dados carregados com sucesso', 'success');
+
+            } catch (error) {
+                mostrarToast('Erro ao carregar dados: ' + error.message, 'error');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        function mostrarLoading(show) {
+            document.getElementById('loadingTable').classList.toggle('active', show);
+        }
+
+        // ============================================================================
+        // RENDERIZAR ESTOQUE
+        // ============================================================================
+
+        function renderizarEstoque() {
+            const tbody = document.getElementById('estoqueBody');
+            const filtroAlmox = document.getElementById('filterAlmoxarifado').value;
+            const filtroCateg = document.getElementById('filterCategoria').value;
+
+            let dados = estadoGlobal.estoque;
+
+            if (filtroAlmox) {
+                dados = dados.filter(d => d.almoxarifado === filtroAlmox);
+            }
+            if (filtroCateg) {
+                dados = dados.filter(d => d.categoria === filtroCateg);
+            }
+
+            tbody.innerHTML = dados.map(item => `
+                <tr>
+                    <td>${item.almoxarifado}</td>
+                    <td>${item.categoria}</td>
+                    <td>${item.item}</td>
+                    <td>${item.tamanho === '-' ? '-' : item.tamanho}</td>
+                    <td style="text-align: right;">
+                        <span class="qty-badge">${item.quantidade}</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function preencherFiltros() {
+            const selectAlmox = document.getElementById('filterAlmoxarifado');
+            const selectCateg = document.getElementById('filterCategoria');
+            const lancAlmox = document.getElementById('lancAlmoxarifado');
+            const lancCateg = document.getElementById('lancCategoria');
+
+            // Almoxarifados
+            const almoxUnicos = [...new Set(estadoGlobal.estoque.map(e => e.almoxarifado))];
+            almoxUnicos.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = a;
+                selectAlmox.appendChild(opt);
+
+                const opt2 = document.createElement('option');
+                opt2.value = a;
+                opt2.textContent = a;
+                lancAlmox.appendChild(opt2);
+            });
+
+            // Categorias
+            estadoGlobal.categorias.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                selectCateg.appendChild(opt);
+
+                const opt2 = document.createElement('option');
+                opt2.value = c;
+                opt2.textContent = c;
+                lancCateg.appendChild(opt2);
+            });
+        }
+
+        function atualizarStats() {
+            const totalItens = estadoGlobal.estoque.length;
+            const totalQtd = estadoGlobal.estoque.reduce((sum, e) => sum + (e.quantidade || 0), 0);
+            const ultima = estadoGlobal.ultimaAtualizacao
+                ? estadoGlobal.ultimaAtualizacao.toLocaleTimeString('pt-BR')
+                : '-';
+
+            document.getElementById('statTotalItens').textContent = totalItens;
+            document.getElementById('statTotalQtd').textContent = totalQtd;
+            document.getElementById('statUltima').textContent = ultima;
+        }
+
+        // ============================================================================
+        // EVENTO: ATUALIZAR
+        // ============================================================================
+
+        document.getElementById('btnAtualizar').addEventListener('click', carregarDados);
+
+        document.getElementById('filterAlmoxarifado').addEventListener('change', renderizarEstoque);
+        document.getElementById('filterCategoria').addEventListener('change', renderizarEstoque);
+
+        // ============================================================================
+        // MODAL LANÇAMENTO
+        // ============================================================================
+
+        const modal = document.getElementById('modalLancamento');
+        const btnNovoLancamento = document.getElementById('btnNovoLancamento');
+        const btnFecharModal = document.getElementById('btnFecharModal');
+        const btnCancelar = document.getElementById('btnCancelar');
+        const formLancamento = document.getElementById('formLancamento');
+
+        btnNovoLancamento.addEventListener('click', () => {
+            modal.classList.add('active');
+        });
+
+        [btnFecharModal, btnCancelar].forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.classList.remove('active');
+                formLancamento.reset();
+            });
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                formLancamento.reset();
+            }
+        });
+
+        formLancamento.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const dados = {
+                acao: 'lancar',
+                cpf: estadoGlobal.usuarioCPF,
+                almoxarifado: document.getElementById('lancAlmoxarifado').value,
+                categoria: document.getElementById('lancCategoria').value,
+                item: document.getElementById('lancItem').value,
+                quantidade: parseInt(document.getElementById('lancQuantidade').value),
+                operacao: document.getElementById('lancOperacao').value,
+                destinacao: document.getElementById('lancDestinacao').value
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(dados)
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso) {
+                    mostrarToast('Movimento registrado com sucesso', 'success');
+                    modal.classList.remove('active');
+                    formLancamento.reset();
+                    await carregarDados();
+                } else {
+                    mostrarToast('Erro: ' + result.mensagem, 'error');
+                }
+            } catch (error) {
+                mostrarToast('Erro ao registrar: ' + error.message, 'error');
+            }
+        });
+
+        // ============================================================================
+        // TOAST
+        // ============================================================================
+
+        function mostrarToast(mensagem, tipo = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = mensagem;
+            toast.className = `toast active ${tipo}`;
+
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        // ============================================================================
+        // INICIALIZAR
+        // ============================================================================
+
+        document.getElementById('cpfInput').focus();
+    </script>
+</body>
+</html>

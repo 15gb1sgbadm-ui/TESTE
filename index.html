@@ -731,6 +731,15 @@
                 </div>
 
                 <div class="form-field">
+                    <label>Tamanho</label>
+                    <input
+                        type="text"
+                        id="lancTamanho"
+                        placeholder="Ex: P, M, G, 42 (deixe em branco se não se aplica)"
+                    >
+                </div>
+
+                <div class="form-field">
                     <label>Quantidade *</label>
                     <input
                         type="number"
@@ -959,21 +968,31 @@
             const lancAlmox = document.getElementById('lancAlmoxarifado');
             const lancCateg = document.getElementById('lancCategoria');
 
-            // Almoxarifados
-            const almoxUnicos = [...new Set(estadoGlobal.estoque.map(e => e.almoxarifado))];
-            almoxUnicos.forEach(a => {
+            // Reseta as opções antes de repopular. Sem isso, cada clique em
+            // "Atualizar" (ou login) reexecuta este código e as opções se
+            // acumulam duplicadas nos quatro selects.
+            selectAlmox.innerHTML = '<option value="">Todos</option>';
+            selectCateg.innerHTML = '<option value="">Todas</option>';
+            lancAlmox.innerHTML = '<option value="">Selecione...</option>';
+            lancCateg.innerHTML = '<option value="">Selecione...</option>';
+
+            // Almoxarifados: usa a lista padronizada da aba "Almoxarifados"
+            // (getAlmoxarifados), não a derivada do estoque atual — assim
+            // aparecem mesmo os almoxarifados que ainda não têm item lançado.
+            estadoGlobal.almoxarifados.forEach(a => {
                 const opt = document.createElement('option');
-                opt.value = a;
-                opt.textContent = a;
+                opt.value = a.nome;
+                opt.textContent = a.nome;
                 selectAlmox.appendChild(opt);
 
                 const opt2 = document.createElement('option');
-                opt2.value = a;
-                opt2.textContent = a;
+                opt2.value = a.nome;
+                opt2.textContent = a.nome;
                 lancAlmox.appendChild(opt2);
             });
 
-            // Categorias
+            // Categorias: usa a lista padronizada da aba "Categorias"
+            // (getCategorias), a mesma lista suspensa configurada no Sheets.
             estadoGlobal.categorias.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c;
@@ -1045,6 +1064,7 @@
                 almoxarifado: document.getElementById('lancAlmoxarifado').value,
                 categoria: document.getElementById('lancCategoria').value,
                 item: document.getElementById('lancItem').value,
+                tamanho: document.getElementById('lancTamanho').value.trim() || '-',
                 quantidade: parseInt(document.getElementById('lancQuantidade').value),
                 operacao: document.getElementById('lancOperacao').value,
                 destinacao: document.getElementById('lancDestinacao').value

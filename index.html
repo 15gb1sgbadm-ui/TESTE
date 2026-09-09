@@ -327,11 +327,57 @@
             background: #f9f9f9;
             padding: 1.5rem;
             border-bottom: 2px solid #ddd;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
         }
 
         .estoque-header h2 {
             font-size: 1.3rem;
             color: #1a1a1a;
+        }
+
+        .search-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex: 1 1 320px;
+            max-width: 420px;
+            margin-left: auto;
+        }
+
+        .search-row input {
+            flex: 1;
+            padding: 0.6rem 0.9rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-row input:focus {
+            outline: none;
+            border-color: #cc0000;
+            box-shadow: 0 0 0 3px rgba(204,0,0,0.1);
+        }
+
+        .btn-limpar-filtro {
+            background: #eee;
+            color: #555;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+
+        .btn-limpar-filtro:hover {
+            background: #ddd;
         }
 
         .estoque-table {
@@ -642,6 +688,16 @@
             .modal-content {
                 margin: 1rem;
             }
+
+            .estoque-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-row {
+                max-width: none;
+                margin-left: 0;
+            }
         }
     </style>
 </head>
@@ -733,6 +789,10 @@
             <div class="estoque-container">
                 <div class="estoque-header">
                     <h2>Estoque Atual</h2>
+                    <div class="search-row">
+                        <input type="text" id="filtroItemTexto" placeholder="Buscar por nome do item..." autocomplete="off">
+                        <button type="button" id="btnLimparFiltro" class="btn-limpar-filtro">Limpar filtro</button>
+                    </div>
                 </div>
                 <div class="loading" id="loadingTable">
                     <div class="spinner"></div>
@@ -1017,6 +1077,8 @@
             const tbody = document.getElementById('estoqueBody');
             const filtroAlmox = document.getElementById('filterAlmoxarifado').value;
             const filtroCateg = document.getElementById('filterCategoria').value;
+            const filtroTextoBruto = document.getElementById('filtroItemTexto').value.trim();
+            const filtroTexto = filtroTextoBruto.toLowerCase();
 
             let dados = estadoGlobal.estoque;
 
@@ -1025,6 +1087,17 @@
             }
             if (filtroCateg) {
                 dados = dados.filter(d => d.categoria === filtroCateg);
+            }
+            if (filtroTexto) {
+                dados = dados.filter(d => (d.item || '').toLowerCase().includes(filtroTexto));
+            }
+
+            if (dados.length === 0) {
+                const mensagem = filtroTextoBruto
+                    ? `Nenhum item encontrado para "${escapeHtml(filtroTextoBruto)}".`
+                    : 'Nenhum item encontrado.';
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">${mensagem}</td></tr>`;
+                return;
             }
 
             tbody.innerHTML = dados.map(item => {
@@ -1112,6 +1185,16 @@
 
         document.getElementById('filterAlmoxarifado').addEventListener('change', renderizarEstoque);
         document.getElementById('filterCategoria').addEventListener('change', renderizarEstoque);
+
+        // Busca por nome do item: filtra a lista a cada tecla digitada.
+        document.getElementById('filtroItemTexto').addEventListener('input', renderizarEstoque);
+
+        document.getElementById('btnLimparFiltro').addEventListener('click', () => {
+            const campoTexto = document.getElementById('filtroItemTexto');
+            campoTexto.value = '';
+            renderizarEstoque();
+            campoTexto.focus();
+        });
 
         // ============================================================================
         // AJUSTE RÁPIDO DE QUANTIDADE (+/-) PARA ITENS JÁ CADASTRADOS

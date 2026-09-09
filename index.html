@@ -367,12 +367,63 @@
 
         .qty-badge {
             display: inline-block;
+            min-width: 2.2rem;
             background: #f0f0f0;
             padding: 0.3rem 0.8rem;
             border-radius: 20px;
             font-weight: 600;
             color: #cc0000;
             font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .qty-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            width: 100%;
+        }
+
+        .qty-btn {
+            width: 26px;
+            height: 26px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            border: none;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.15s;
+        }
+
+        .qty-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .qty-plus {
+            background: #dff5df;
+            color: #008000;
+        }
+
+        .qty-plus:hover:not(:disabled) {
+            background: #c5edc5;
+            transform: translateY(-1px);
+        }
+
+        .qty-minus {
+            background: #fde3e3;
+            color: #990000;
+        }
+
+        .qty-minus:hover:not(:disabled) {
+            background: #fbcaca;
+            transform: translateY(-1px);
         }
 
         /* ============ MODAL LANÇAMENTO ============ */
@@ -413,6 +464,13 @@
         .modal-header h2 {
             font-size: 1.5rem;
             color: #1a1a1a;
+        }
+
+        .modal-subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: -1rem;
+            margin-bottom: 1.5rem;
         }
 
         .modal-close {
@@ -652,7 +710,7 @@
                     </select>
                 </div>
                 <button class="btn-atualizar" id="btnAtualizar">🔄 Atualizar</button>
-                <button class="btn-lancar" id="btnNovoLancamento">+ Lançar Item</button>
+                <button class="btn-lancar" id="btnNovoLancamento">+ Novo Item</button>
             </div>
 
             <!-- STATS -->
@@ -697,13 +755,14 @@
         </div>
     </div>
 
-    <!-- ============ MODAL LANÇAMENTO ============ -->
+    <!-- ============ MODAL NOVO ITEM ============ -->
     <div id="modalLancamento" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Lançar Movimento</h2>
+                <h2>Cadastrar Novo Item</h2>
                 <button class="modal-close" id="btnFecharModal">&times;</button>
             </div>
+            <p class="modal-subtitle">Use este formulário apenas para itens que ainda não existem no estoque. Para ajustar a quantidade de um item já cadastrado, use os botões +/- na tabela.</p>
 
             <form id="formLancamento" class="modal-form">
                 <div class="form-field">
@@ -740,7 +799,7 @@
                 </div>
 
                 <div class="form-field">
-                    <label>Quantidade *</label>
+                    <label>Quantidade inicial *</label>
                     <input
                         type="number"
                         id="lancQuantidade"
@@ -748,15 +807,6 @@
                         placeholder="0"
                         required
                     >
-                </div>
-
-                <div class="form-field">
-                    <label>Operação *</label>
-                    <select id="lancOperacao" required>
-                        <option value="">Selecione...</option>
-                        <option value="entrada">Entrada</option>
-                        <option value="saída">Saída</option>
-                    </select>
                 </div>
 
                 <div class="form-field">
@@ -794,6 +844,21 @@
             categorias: [],
             ultimaAtualizacao: null
         };
+
+        // Trava simples para impedir cliques duplicados nos botões +/- enquanto
+        // uma requisição de ajuste está em andamento.
+        let ajusteEmAndamento = false;
+
+        // Escapa texto para uso seguro tanto em conteúdo quanto em atributos
+        // HTML (nomes de itens vindos da planilha podem conter aspas, & etc.).
+        function escapeHtml(valor) {
+            return String(valor ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         // ============================================================================
         // LOGIN
@@ -927,6 +992,19 @@
             }
         }
 
+        // Recarrega somente o estoque, sem mexer no spinner de tela cheia nem
+        // disparar o toast de "dados carregados" — usado depois de um ajuste
+        // rápido de quantidade (+/-) para não ser barulhento a cada clique.
+        async function recarregarEstoqueSilencioso() {
+            const estoque = await fetch(`${API_URL}?acao=getEstoque`).then(r => r.json());
+            if (estoque.sucesso && estoque.dados) {
+                estadoGlobal.estoque = estoque.dados;
+            }
+            estadoGlobal.ultimaAtualizacao = new Date();
+            renderizarEstoque();
+            atualizarStats();
+        }
+
         function mostrarLoading(show) {
             document.getElementById('loadingTable').classList.toggle('active', show);
         }
@@ -949,17 +1027,25 @@
                 dados = dados.filter(d => d.categoria === filtroCateg);
             }
 
-            tbody.innerHTML = dados.map(item => `
-                <tr>
-                    <td>${item.almoxarifado}</td>
-                    <td>${item.categoria}</td>
-                    <td>${item.item}</td>
-                    <td>${item.tamanho === '-' ? '-' : item.tamanho}</td>
+            tbody.innerHTML = dados.map(item => {
+                const tamanho = item.tamanho || '-';
+                const qtd = item.quantidade || 0;
+                return `
+                <tr data-almoxarifado="${escapeHtml(item.almoxarifado)}" data-categoria="${escapeHtml(item.categoria)}" data-item="${escapeHtml(item.item)}" data-tamanho="${escapeHtml(tamanho)}">
+                    <td>${escapeHtml(item.almoxarifado)}</td>
+                    <td>${escapeHtml(item.categoria)}</td>
+                    <td>${escapeHtml(item.item)}</td>
+                    <td>${escapeHtml(tamanho)}</td>
                     <td style="text-align: right;">
-                        <span class="qty-badge">${item.quantidade}</span>
+                        <div class="qty-control">
+                            <button type="button" class="qty-btn qty-minus" ${qtd <= 0 ? 'disabled' : ''} title="Remover 1 unidade" aria-label="Remover 1 unidade">−</button>
+                            <span class="qty-badge">${qtd}</span>
+                            <button type="button" class="qty-btn qty-plus" title="Adicionar 1 unidade" aria-label="Adicionar 1 unidade">+</button>
+                        </div>
                     </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function preencherFiltros() {
@@ -1028,7 +1114,77 @@
         document.getElementById('filterCategoria').addEventListener('change', renderizarEstoque);
 
         // ============================================================================
-        // MODAL LANÇAMENTO
+        // AJUSTE RÁPIDO DE QUANTIDADE (+/-) PARA ITENS JÁ CADASTRADOS
+        // ============================================================================
+
+        document.getElementById('estoqueBody').addEventListener('click', async (e) => {
+            const btn = e.target.closest('.qty-btn');
+            if (!btn || btn.disabled) return;
+            if (ajusteEmAndamento) return;
+
+            const row = btn.closest('tr');
+            const almoxarifado = row.dataset.almoxarifado;
+            const categoria = row.dataset.categoria;
+            const item = row.dataset.item;
+            const tamanho = row.dataset.tamanho;
+            const operacao = btn.classList.contains('qty-plus') ? 'entrada' : 'saída';
+
+            const itemAtual = estadoGlobal.estoque.find(d =>
+                d.almoxarifado === almoxarifado &&
+                d.categoria === categoria &&
+                d.item === item &&
+                (d.tamanho || '-') === tamanho
+            );
+
+            if (!itemAtual) {
+                mostrarToast('Item não encontrado no estoque atual. Clique em Atualizar.', 'error');
+                return;
+            }
+
+            if (operacao === 'saída' && (itemAtual.quantidade || 0) <= 0) {
+                mostrarToast('Quantidade já está zerada', 'error');
+                return;
+            }
+
+            ajusteEmAndamento = true;
+            row.querySelectorAll('.qty-btn').forEach(b => b.disabled = true);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        acao: 'lancar',
+                        cpf: estadoGlobal.usuarioCPF,
+                        almoxarifado,
+                        categoria,
+                        item,
+                        tamanho,
+                        quantidade: 1,
+                        operacao,
+                        destinacao: 'Ajuste rápido (+/-)'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso) {
+                    await recarregarEstoqueSilencioso();
+                } else {
+                    mostrarToast('Erro: ' + result.mensagem, 'error');
+                }
+            } catch (error) {
+                mostrarToast('Erro ao ajustar quantidade: ' + error.message, 'error');
+            } finally {
+                ajusteEmAndamento = false;
+                // Se a linha ainda estiver no DOM (caminho de erro — o sucesso
+                // já reconstrói a tabela via recarregarEstoqueSilencioso),
+                // reabilita os botões dela.
+                row.querySelectorAll('.qty-btn').forEach(b => b.disabled = false);
+            }
+        });
+
+        // ============================================================================
+        // MODAL NOVO ITEM
         // ============================================================================
 
         const modal = document.getElementById('modalLancamento');
@@ -1055,18 +1211,45 @@
             }
         });
 
+        // Verifica se já existe um item cadastrado com a mesma combinação de
+        // almoxarifado + categoria + item + tamanho (comparação de item
+        // ignora maiúsculas/minúsculas e espaços nas pontas).
+        function itemJaCadastrado(almoxarifado, categoria, item, tamanho) {
+            const tamanhoNorm = (tamanho || '').trim() || '-';
+            const itemNorm = (item || '').trim().toLowerCase();
+            return estadoGlobal.estoque.some(d =>
+                d.almoxarifado === almoxarifado &&
+                d.categoria === categoria &&
+                (d.item || '').trim().toLowerCase() === itemNorm &&
+                ((d.tamanho || '').trim() || '-') === tamanhoNorm
+            );
+        }
+
         formLancamento.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const almoxarifado = document.getElementById('lancAlmoxarifado').value;
+            const categoria = document.getElementById('lancCategoria').value;
+            const itemNome = document.getElementById('lancItem').value;
+            const tamanho = document.getElementById('lancTamanho').value.trim() || '-';
+            const quantidade = parseInt(document.getElementById('lancQuantidade').value);
+
+            // Este formulário serve só para itens que ainda não existem no
+            // estoque. Se já existir, bloqueia e orienta a usar os +/- da tabela.
+            if (itemJaCadastrado(almoxarifado, categoria, itemNome, tamanho)) {
+                mostrarToast('Este item já está cadastrado. Use os botões +/- na tabela para ajustar a quantidade.', 'error');
+                return;
+            }
 
             const dados = {
                 acao: 'lancar',
                 cpf: estadoGlobal.usuarioCPF,
-                almoxarifado: document.getElementById('lancAlmoxarifado').value,
-                categoria: document.getElementById('lancCategoria').value,
-                item: document.getElementById('lancItem').value,
-                tamanho: document.getElementById('lancTamanho').value.trim() || '-',
-                quantidade: parseInt(document.getElementById('lancQuantidade').value),
-                operacao: document.getElementById('lancOperacao').value,
+                almoxarifado,
+                categoria,
+                item: itemNome,
+                tamanho,
+                quantidade,
+                operacao: 'entrada',
                 destinacao: document.getElementById('lancDestinacao').value
             };
 
@@ -1079,7 +1262,7 @@
                 const result = await response.json();
 
                 if (result.sucesso) {
-                    mostrarToast('Movimento registrado com sucesso', 'success');
+                    mostrarToast('Item cadastrado com sucesso', 'success');
                     modal.classList.remove('active');
                     formLancamento.reset();
                     await carregarDados();
